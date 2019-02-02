@@ -1,4 +1,4 @@
--module(ct_sup).
+-module(test_cowboy_sup).
 -behaviour(supervisor).
 
 -export([start_link/0]).

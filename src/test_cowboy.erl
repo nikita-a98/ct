@@ -1,4 +1,4 @@
--module(ct).
+-module(test_cowboy).
 
 -export([init/2]).
 

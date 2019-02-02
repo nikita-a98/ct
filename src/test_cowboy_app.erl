@@ -1,4 +1,4 @@
--module(ct_app).
+-module(test_cowboy_app).
 -behaviour(application).
 
 -export([start/2]).
@@ -7,7 +7,7 @@
 start(_Type, _Args) ->
 	Dispatch = cowboy_router:compile([
 		{'_', [
-			{"/", ct, []}
+			{"/", test_cowboy, []}
 		]}
 	]),
 	{ok, _} = cowboy:start_clear(

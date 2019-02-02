@@ -2,5 +2,6 @@ ebin/*.beam
 erl_crash.dump
 .idea/
 .erlang.mk/
-ct.d
+test_cowboy.d
 _rel/
+deps/
