@@ -7,7 +7,8 @@
 start(_Type, _Args) ->
 	Dispatch = cowboy_router:compile([
 		{'_', [
-			{"/", test_cowboy, []}
+			{"/", test_cowboy, []},
+			{"/websocket", ws_h, []}
 		]}
 	]),
 	{ok, _} = cowboy:start_clear(
@@ -15,7 +16,7 @@ start(_Type, _Args) ->
 		[{port, 8080}],
 		#{env => #{dispatch => Dispatch}}
 	),
-	ct_sup:start_link().
+	test_cowboy_sup:start_link().
 
 stop(_State) ->
 	ok.
