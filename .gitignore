@@ -1,0 +1,6 @@
+ebin/*.beam
+erl_crash.dump
+.idea/
+.erlang.mk/
+ct.d
+_rel/
