@@ -9,8 +9,8 @@
 all() ->
   [
     echo_get,
-    echo_post
-%%    echo_ws
+    echo_post,
+    echo_ws
   ].
 
 suite() ->
@@ -50,6 +50,48 @@ echo_post(_Config) ->
   <<"This is a POST hihihi">> = req_api:get_resp_body(R).
 
 echo_ws(_Config) ->
+  gun_app:start([],[]),
+  {ok, Pid} = gun:open(
+    "127.0.0.1",
+    8080,
+    #{protocols =>[http], retry => 0}
+  ),
+  {ok, http} = gun:await_up(Pid),
+  _ = monitor(process, Pid),
+  StreamRef = gun:ws_upgrade(Pid, "/websocket", [], #{compress => true}),
+  receive
+    {gun_upgrade, Pid, StreamRef, _, _} ->
+      ok;
+    Msg1 ->
+      exit({connection_failed, Msg1})
+  end,
+
+  %% Check that we receive the message sent on timer on init.
+  receive
+    {gun_ws, Pid, StreamRef, {text, <<"Start!">>}} ->
+      ok
+  after 2000 ->
+    exit(timeout)
+  end,
+
+  %% Check that we receive subsequent messages sent on timer.
+  receive
+    {gun_ws, Pid, StreamRef, {text, _}} ->
+      ok
+  after 20000 ->
+    exit(timeout)
+  end,
+
+  %% Check that we receive the echoed message.
+  gun:ws_send(Pid, {text, <<"hello">>}),
+  receive
+    {gun_ws, Pid, StreamRef, {text, <<"Your text: hello">>}} ->
+      ok
+  after 500 ->
+    exit(timeout)
+  end,
+  gun:ws_send(Pid, close),
+
   ok.
 
 
