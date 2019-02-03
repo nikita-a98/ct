@@ -8,62 +8,55 @@
 
 all() ->
   [
-    echo_get
+    echo_get,
+    echo_post
+%%    echo_ws
   ].
 
+suite() ->
+  [{timetrap,{minutes,1}}].
 
-init_per_testcase(_, Config) ->
-  application:start(test_cowboy_app),
-%%  application:start(inets),
-%%  application:start(ssl),
-%%  application:start(cowboy),
+init_per_suite(Config) ->
+  {ok, _} = application:ensure_all_started(test_cowboy),
+  {ok, _} = application:ensure_all_started(crypto),
+  {ok, _} = application:ensure_all_started(public_key),
+  {ok, _} = application:ensure_all_started(ssl),
+  {ok, _} = application:ensure_all_started(inets),
+%%  Rel = "/home/nikita/IdeaProjects/ct/_rel/test_cowboy_release/bin/test_cowboy_release",
+%%  os:cmd(Rel ++ " start"),
   Config.
 
-end_per_testcase(_, _Config) ->
-  application:stop(test_cowboy_app),
+end_per_suite(_Config) ->
+  ok = application:stop(test_cowboy),
+  ok = application:stop(crypto),
+  ok = application:stop(public_key),
+  ok = application:stop(ssl),
+  ok = application:stop(inets),
+  Rel = "/home/nikita/IdeaProjects/ct/_rel/test_cowboy_release/bin/test_cowboy_release",
+  os:cmd(Rel ++ " stop"),
   ok.
 
-%%echo_get(_Config) ->
-%%  {ok,{{_,200,_},_,_}} = httpc:request("http://localhost:8080/?echo=saymyname").
+echo_get(_Config) ->
+  Url = "http://localhost:8080/?echo=hihihi",
+  {ok, R} = req_api:req(get, Url),
+  200 = req_api:get_resp_code(R),
+  <<"This is a GET hihihi">> = req_api:get_resp_body(R).
 
+echo_post(_Config) ->
+  Url = "http://localhost:8080",
+  Body = "echo=hihihi",
+  {ok, R} = req_api:req(post, Url, [], Body),
+  200 = req_api:get_resp_code(R),
+  <<"This is a POST hihihi">> = req_api:get_resp_body(R).
 
-echo_get(Config) ->
-  do_echo_get(tcp, http, Config).
-
-do_echo_get(Transport, Protocol, Config) ->
-  {200, _, <<"this is fun">>} = do_get(Transport, Protocol, "/?echo=this+is+fun", [], Config),
-  {400, _, _} = do_get(Transport, Protocol, "/", [], Config),
+echo_ws(_Config) ->
   ok.
 
-do_get(Transport, Protocol, Path, ReqHeaders, Config) ->
-  Port = case Transport of
-           tcp -> 8080;
-           ssl -> 8443
-         end,
-  ConnPid = gun_open([{port, Port}, {type, Transport}, {protocol, Protocol}|Config]),
 
-  Ref = gun:get(ConnPid, Path, ReqHeaders),
-  case gun:await(ConnPid, Ref) of
-    {response, nofin, Status, RespHeaders} ->
-      {ok, Body} = gun:await_body(ConnPid, Ref),
-      {Status, RespHeaders, Body};
-    {response, fin, Status, RespHeaders} ->
-      {Status, RespHeaders, <<>>}
-  end.
 
-gun_open(Config) ->
-  gun_open(Config, #{}).
 
-gun_open(Config, Opts) ->
-  {ok, ConnPid} = gun:open("localhost", config(port, Config), Opts#{
-    retry => 0,
-    transport => config(type, Config),
-    transport_opts => proplists:get_value(transport_opts, Config, []),
-    protocols => [config(protocol, Config)]
-  }),
-  ConnPid.
 
-config(Key, Config) ->
-  {_, Value} = lists:keyfind(Key, 1, Config),
-  Value.
+
+
+
 

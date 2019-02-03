@@ -5,3 +5,6 @@ erl_crash.dump
 test_cowboy.d
 _rel/
 deps/
+ebin/test
+logs/
+test/*.beam

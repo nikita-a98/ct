@@ -8,7 +8,7 @@ init(Req, Opts) ->
 	Method = cowboy_req:method(Req),
 	Req1 = method(Method, Req, Opts),
 	io:format("body: ~p~n~n", [Req1]),
-	{ok, Req1, Opts}.
+	{ok, Req, Opts}.
 
 method(<<"POST">>, Req, _Opts) ->
 	HasBody = cowboy_req:has_body(Req),
