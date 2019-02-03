@@ -4,6 +4,7 @@
 
 
 init(Req, Opts) ->
+	io:format("body111: ~p~n~n", [Req]),
 	Method = cowboy_req:method(Req),
 	Req1 = method(Method, Req, Opts),
 	io:format("body: ~p~n~n", [Req1]),
