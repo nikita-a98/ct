@@ -14,4 +14,8 @@ ERLC_OPTS += +debug_info +bin_opt_info
 DEPS = cowboy
 dep_cowboy = git https://github.com/ninenines/cowboy.git 2.6.1
 
+TEST_DEPS = $(if $(CI_ERLANG_MK),ci.erlang.mk) ct_helper gun proper
+dep_ct_helper = git https://github.com/extend/ct_helper master
+dep_gun = git https://github.com/ninenines/gun master
+
 include erlang.mk
