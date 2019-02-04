@@ -130,10 +130,9 @@ end_per_group(_GroupName = req, Config) ->
     {ok, Cwd} = file:get_cwd(),
     Module = atom_to_list(config(module, Config)),
     Rel = Cwd ++ "/_rel/" ++ Module ++ "_release/bin/" ++ Module ++ "_release",
-    Log = Cwd ++ "/_rel/" ++ Module ++ "_release/log/erlang.log.1",
+%%    Log = Cwd ++ "/_rel/" ++ Module ++ "_release/log/erlang.log.1",
     %%os:cmd(Rel ++ " stop"),
     ct:log("~s~n", [os:cmd(Rel ++ " stop")]),
-    ct:pal("~s~n", [element(2, file:read_file(Log))]),
     ok.
 
 %%%--------------------------------------------------------------------
@@ -187,6 +186,7 @@ end_per_testcase(echo_get, _Config) ->
 echo_get(_Config) ->
     Url = "http://localhost:8080/?echo=hihihi",
     {ok, R} = req_api:req(get, Url),
+    ct:pal("GET request ~n~p~n", [R]),
     ?assertMatch(200, req_api:get_resp_code(R)),
     ?assertMatch(<<"This is a GET hihihi">>, req_api:get_resp_body(R)).
 
@@ -197,6 +197,7 @@ echo_post(_Config) ->
     Url = "http://localhost:8080",
     Body = "echo=hihihi",
     {ok, R} = req_api:req(post, Url, [], Body),
+    ct:pal("POST request ~n~p~n", [R]),
     ?assertMatch(200, req_api:get_resp_code(R)),
     ?assertMatch(<<"This is a POST hihihi">>, req_api:get_resp_body(R)).
 
@@ -212,6 +213,7 @@ echo_ws(_Config) ->
     ?assertMatch({ok, http}, gun:await_up(Pid)),
     _ = monitor(process, Pid),
     StreamRef = gun:ws_upgrade(Pid, "/websocket", [], #{compress => true}),
+    ct:pal("WS request StreamRef: ~n~p~n", [StreamRef]),
     receive
         {gun_upgrade, Pid, StreamRef, _, _} ->
             ok;
@@ -220,29 +222,32 @@ echo_ws(_Config) ->
     end,
 
     %% Check that we receive the message sent on timer on init.
-    receive
+    R1 = receive
         {gun_ws, Pid, StreamRef, {text, <<"Start!">>}} ->
             ok
     after 2000 ->
         exit(timeout)
     end,
+    ct:pal("WS request Check that we receive the message sent on timer on init: ~n~p~n", [R1]),
 
     %% Check that we receive subsequent messages sent on timer.
-    receive
+    R2 = receive
         {gun_ws, Pid, StreamRef, {text, _}} ->
             ok
     after 20000 ->
         exit(timeout)
     end,
+    ct:pal("WS request Check that we receive subsequent messages sent on timer: ~n~p~n", [R2]),
 
     %% Check that we receive the echoed message.
-    gun:ws_send(Pid, {text, <<"hello">>}),
-    receive
+    R3 = gun:ws_send(Pid, {text, <<"hello">>}),
+    R4 =  receive
         {gun_ws, Pid, StreamRef, {text, <<"Your text: hello">>}} ->
             ok
     after 500 ->
         exit(timeout)
     end,
+    ct:pal("WS request Check that we receive the echoed message: ~n Send ~p~n Receive~p~n", [R3,R4]),
     gun:ws_send(Pid, close),
     ok.
 
