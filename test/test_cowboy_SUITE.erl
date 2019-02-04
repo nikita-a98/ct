@@ -1,39 +1,62 @@
 -module(test_cowboy_SUITE).
 
 -compile(export_all).
+-import(ct_helper, [config/2]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 
+
 all() ->
   [
-    echo_get,
-    echo_post,
-    echo_ws
+    {group,req}
   ].
+
 
 suite() ->
   [{timetrap,{minutes,1}}].
 
 init_per_suite(Config) ->
+  _NewConfig = [{module, test_cowboy}|Config].
+
+end_per_suite(_) ->
+  ok.
+
+
+groups() ->
+  [{_GroupName = req, _Opt = [parallel], _TestCases = [echo_get, echo_post, echo_ws]}].
+
+init_per_group(_GroupName = req, Config) ->
   {ok, _} = application:ensure_all_started(test_cowboy),
-  {ok, _} = application:ensure_all_started(crypto),
-  {ok, _} = application:ensure_all_started(public_key),
-  {ok, _} = application:ensure_all_started(ssl),
   {ok, _} = application:ensure_all_started(inets),
-%%  Rel = "/home/nikita/IdeaProjects/ct/_rel/test_cowboy_release/bin/test_cowboy_release",
-%%  os:cmd(Rel ++ " start"),
   Config.
 
-end_per_suite(_Config) ->
+end_per_group(_GroupName = req, Config) ->
   ok = application:stop(test_cowboy),
   ok = application:stop(crypto),
   ok = application:stop(public_key),
   ok = application:stop(ssl),
   ok = application:stop(inets),
-  Rel = "/home/nikita/IdeaProjects/ct/_rel/test_cowboy_release/bin/test_cowboy_release",
+  {ok, Cwd} = file:get_cwd(),
+  Module = atom_to_list(config(module, Config)),
+  Rel = Cwd ++ "/_rel/" ++ Module ++ "_release/bin/" ++ Module ++ "_release",
   os:cmd(Rel ++ " stop"),
+  ok.
+
+init_per_testcase(echo_ws, Config) ->
+  {ok, _} = application:ensure_all_started(gun),
+  Config;
+init_per_testcase(echo_post, Config) ->
+  Config;
+init_per_testcase(echo_get, Config) ->
+  Config.
+
+end_per_testcase(echo_ws, _Config) ->
+  ok = application:stop(gun);
+end_per_testcase(echo_post, _Config) ->
+  ok;
+end_per_testcase(echo_get, _Config) ->
   ok.
 
 echo_get(_Config) ->
@@ -50,7 +73,6 @@ echo_post(_Config) ->
   <<"This is a POST hihihi">> = req_api:get_resp_body(R).
 
 echo_ws(_Config) ->
-  gun_app:start([],[]),
   {ok, Pid} = gun:open(
     "127.0.0.1",
     8080,
