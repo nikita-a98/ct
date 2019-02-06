@@ -203,9 +203,11 @@ echo_post(_Config) ->
 
     Auth = base64:encode(<<"Nikita:open sesame">>),
     Header =
-        [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
-
-    Body = "echo=hihihi",
+        [
+            {<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])},
+            {<<"content-type">>, <<"text/plain">>}
+        ],
+    Body = <<"echo=hihihi">>,
     {ok, R} = req_api:req(post, Url, Header, Body),
     ct:pal("POST request ~n~p~n", [R]),
     ?assertMatch(200, req_api:get_resp_code(R)),

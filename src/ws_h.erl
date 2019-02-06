@@ -5,7 +5,8 @@
     init/2,
     websocket_init/1,
     websocket_handle/2,
-    websocket_info/2
+    websocket_info/2,
+    bin_time/0
 ]).
 
 %%% ==================================================================
