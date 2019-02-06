@@ -185,7 +185,12 @@ end_per_testcase(echo_get, _Config) ->
 %%%-------------------------------------------------------------------
 echo_get(_Config) ->
     Url = "http://localhost:8080/?echo=hihihi",
-    {ok, R} = req_api:req(get, Url),
+
+    Auth = base64:encode(<<"Nikita:open sesame">>),
+    Header =
+        [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
+
+    {ok, R} = req_api:req(get, Url, Header),
     ct:pal("GET request ~n~p~n", [R]),
     ?assertMatch(200, req_api:get_resp_code(R)),
     ?assertMatch(<<"This is a GET hihihi">>, req_api:get_resp_body(R)).
@@ -195,8 +200,13 @@ echo_get(_Config) ->
 %%%-------------------------------------------------------------------
 echo_post(_Config) ->
     Url = "http://localhost:8080",
+
+    Auth = base64:encode(<<"Nikita:open sesame">>),
+    Header =
+        [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
+
     Body = "echo=hihihi",
-    {ok, R} = req_api:req(post, Url, [], Body),
+    {ok, R} = req_api:req(post, Url, Header, Body),
     ct:pal("POST request ~n~p~n", [R]),
     ?assertMatch(200, req_api:get_resp_code(R)),
     ?assertMatch(<<"This is a POST hihihi">>, req_api:get_resp_body(R)).
