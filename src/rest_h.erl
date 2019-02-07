@@ -63,12 +63,7 @@ content_types_accepted(Req, State) ->
 to_text(Req, State) ->
     Method = cowboy_req:method(Req),
     io:format("Method: ~n~n~p~n~n", [Method]),
-    case Method of
-        <<"POST">> ->
-            echo(<<"POST">>, Req, State);
-        <<"GET">> ->
-            echo(<<"GET">>, Req, State)
-    end.
+    echo(Method, Req, State).
 
 
 
