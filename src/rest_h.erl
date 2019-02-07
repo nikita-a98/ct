@@ -1,9 +1,11 @@
 %% Testing Get and Post requests
 %% For GET request
 %% curl -i -H "Accept: text/plain" -u "Nikita:open sesame" http://localhost:8080/?echo=hihihi
+%% curl -i -H "Accept: application/json" -u "Nikita:open sesame" http://localhost:8080/
 %%
 %% For Post request
 %% curl -i -H "content-type: text/plain" -d echo=hihihi -u "Nikita:open sesame" http://localhost:8080
+%% curl -i -H "content-type: application/json" -d "{"v": "1", "obj": "foo", "op": "create", "data": {"foo": "bar"}}" -u "Nikita:open sesame" http://localhost:8080
 
 -module(rest_h).
 -author("nikita").
@@ -18,7 +20,11 @@
 ]).
 
 %% Custom callbacks.
--export([to_text/2]).
+-export([
+    to_text/2,
+    to_json/2,
+    from_json/2
+]).
 
 %%% ==================================================================
 %%% Callback functions
@@ -41,12 +47,14 @@ allowed_methods(Req, State) ->
 
 content_types_provided(Req, State) ->
     {[
-        {{<<"text">>, <<"plain">>, []}, to_text}
+        {{<<"text">>, <<"plain">>, []}, to_text},
+        {<<"application/json">>, to_json}
     ], Req, State}.
 
 content_types_accepted(Req, State) ->
     {[
-        {{<<"text">>, <<"plain">>, []}, to_text}
+        {{<<"text">>, <<"plain">>, []}, to_text},
+        {<<"application/json">>, from_json}
     ], Req, State}.
 
 
@@ -66,6 +74,107 @@ to_text(Req, State) ->
     echo(Method, Req, State).
 
 
+to_json(Req, State) ->
+    io:format("Req2: ~n~n~p~n~n", [Req]),
+    Body = #{
+        <<"status">> => <<"ok">>,
+        <<"data">> =>
+        #{
+            <<"foo">> => <<"bar">>
+        }
+    },
+    Body1 = jiffy:encode(Body),
+    io:format("Body: ~n~n~p~n~n", [Body1]),
+    {Body1, Req, State}.
+
+%%
+%%echo_to_json(<<"GET">>, Req, State) ->
+%%    io:format("Req2: ~n~n~p~n~n", [Req]),
+%%    Body = #{
+%%        <<"status">> => <<"ok">>,
+%%        <<"data">> =>
+%%            #{
+%%                <<"foo">> => <<"bar">>
+%%            }
+%%    },
+%%    Body1 = jiffy:encode(Body),
+%%    io:format("Body: ~n~n~p~n~n", [Body1]),
+%%    {Body1, Req, State};
+%%
+%%echo_to_json(<<"POST">>, Req, State) ->
+%%    io:format("Req2: ~n~n~p~n~n", [Req]),
+%%    Body = #{
+%%        <<"status">> => <<"ok">>,
+%%        <<"data">> =>
+%%        #{
+%%            <<"foo">> => <<"bar">>
+%%        }
+%%    },
+%%    Body1 = jiffy:encode(Body),
+%%    io:format("Body: ~n~n~p~n~n", [Body1]),
+%%    Resp = cowboy_req:set_resp_body(Body1, Req),
+%%    {true, Resp, State}.
+
+
+from_json(Req0, State) ->
+    io:format("Req2: ~n~n~p~n~n", [Req0]),
+    {ok, Echo, Req} = cowboy_req:read_urlencoded_body(Req0),
+
+    io:format("Echo: ~n~p~n~n", [Echo]),
+    Echo1 = jiffy:decode(Echo, [return_maps]),
+    io:format("Echo1: ~n~p~n~n", [Echo1]),
+    #{
+        <<"v">> := _V,
+        <<"obj">> := _Obj,
+        <<"op">> := _Op,
+        <<"data">> :=
+        #{
+            <<"foo">> := _Foo
+        }
+    } = Echo1,
+
+    Resp = cowboy_req:set_resp_body([], Req),
+    {true, Resp, State}.
+
+%%
+%%echo_from_json(<<"GET">>, Req, State) ->
+%%    io:format("Req2: ~n~p~n~n", [Req]),
+%%    #{echo := Echo} = cowboy_req:match_qs([{echo, [], undefined}], Req),
+%%    io:format("Echo: ~n~p~n~n", [Echo]),
+%%
+%%    Echo1 = jiffy:decode(Echo, [return_maps]),
+%%    io:format("Echo1: ~n~p~n~n", [Echo1]),
+%%    #{
+%%        <<"v">> := _V,
+%%        <<"obj">> := _Obj,
+%%        <<"op">> := _Op,
+%%        <<"data">> :=
+%%            #{
+%%                <<"foo">> := _Foo
+%%            }
+%%    } = Echo1,
+%%
+%%    {[], Req, State};
+%%
+%%echo_from_json(<<"POST">>, Req0, State) ->
+%%    io:format("Req2: ~n~n~p~n~n", [Req0]),
+%%    {ok, Echo, Req} = cowboy_req:read_urlencoded_body(Req0),
+%%
+%%    io:format("Echo: ~n~p~n~n", [Echo]),
+%%    Echo1 = jiffy:decode(Echo, [return_maps]),
+%%    io:format("Echo1: ~n~p~n~n", [Echo1]),
+%%    #{
+%%        <<"v">> := _V,
+%%        <<"obj">> := _Obj,
+%%        <<"op">> := _Op,
+%%        <<"data">> :=
+%%        #{
+%%            <<"foo">> := _Foo
+%%        }
+%%    } = Echo1,
+%%
+%%    Resp = cowboy_req:set_resp_body([], Req),
+%%    {true, Resp, State}.
 
 %%% ==================================================================
 %%% Internal functions
