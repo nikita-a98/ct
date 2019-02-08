@@ -76,14 +76,16 @@ to_text(Req, State) ->
 
 to_json(Req, State) ->
     io:format("Req2: ~n~n~p~n~n", [Req]),
-    Body = #{
-        <<"status">> => <<"ok">>,
-        <<"data">> =>
-        #{
-            <<"foo">> => <<"bar">>
-        }
-    },
-    Body1 = jiffy:encode(Body),
+%%    Body = #{
+%%        <<"status">> => <<"ok">>,
+%%        <<"data">> =>
+%%        #{
+%%            <<"foo">> => <<"bar">>
+%%        }
+%%    },
+%%    Body1 = jiffy:encode(Body),
+    {ok, Body} = db_api:get_v(),
+    Body1 = binary:list_to_bin(Body),
     io:format("Body: ~n~n~p~n~n", [Body1]),
     {Body1, Req, State}.
 
@@ -119,7 +121,8 @@ to_json(Req, State) ->
 from_json(Req0, State) ->
     io:format("Req2: ~n~n~p~n~n", [Req0]),
     {ok, [{Echo, _}], Req} = cowboy_req:read_urlencoded_body(Req0),
-    try jiffy:decode(binary_to_list(Echo), [return_maps]) of
+    BinEcho = binary_to_list(Echo),
+    try jiffy:decode(BinEcho, [return_maps]) of
         Echo1 ->
             io:format("Echo1: ~n~p~n~n", [Echo1]),
             #{
@@ -131,7 +134,7 @@ from_json(Req0, State) ->
                     <<"foo">> := _Foo
                 }
             } = Echo1,
-
+            db_api:set(BinEcho),
             Resp = cowboy_req:reply(200, Req),
             {stop, Resp, State}
     catch

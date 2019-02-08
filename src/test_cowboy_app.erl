@@ -29,6 +29,7 @@ start(_Type, _Args) ->
         [{port, 8080}],
         #{env => #{dispatch => Dispatch}}
     ),
+    db_api:setup(),
     test_cowboy_sup:start_link().
 
 %% -------------------------------------------------------------------
@@ -37,4 +38,5 @@ start(_Type, _Args) ->
 -spec stop(_) -> ok.
 
 stop(_State) ->
+    mnesia:stop(),
     ok.
