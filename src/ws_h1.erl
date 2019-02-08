@@ -48,6 +48,7 @@ websocket_handle({text, Msg}, State) ->
     catch
         _ ->
             Body = jiffy:encode(#{<<"status">> => <<"error">>}),
+            io:format("Body1: ~n~p~n~n", [Body]),
             {reply, {text, <<Body/binary>>}, State}
     end;
 websocket_handle(_Data, State) ->

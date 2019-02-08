@@ -91,14 +91,15 @@ end_per_suite(_) ->
 %%% Description: Returns a list of test case group definitions.
 %%%-------------------------------------------------------------------
 groups() ->
-    [{_GroupName = req, _Opt = [parallel], _TestCases = [
+    [{_GroupName = req, _Opt = [sequence], _TestCases = [
         echo_get,
         echo_post,
         echo_ws,
         is_avail_resource_must_return_200_ok,
         is_avail_resource_must_return_404_error,
         post_must_return_200_ok,
-        post_must_return_400_error
+        post_must_return_400_error,
+        ws_must_return_ok_error
     ]}].
 
 %%%-------------------------------------------------------------------
@@ -159,6 +160,9 @@ end_per_group(_GroupName = req, Config) ->
 init_per_testcase(echo_ws, Config) ->
     ?assertMatch({ok, _}, application:ensure_all_started(gun)),
     Config;
+init_per_testcase(ws_must_return_ok_error, Config) ->
+    ?assertMatch({ok, _}, application:ensure_all_started(gun)),
+    Config;
 init_per_testcase(_, Config) ->
     Config.
 
@@ -176,6 +180,8 @@ init_per_testcase(_, Config) ->
 %%% Description: Cleanup after each test case.
 %%%--------------------------------------------------------------------
 end_per_testcase(echo_ws, _Config) ->
+    ?assertMatch(ok, application:stop(gun));
+end_per_testcase(ws_must_return_ok_error, _Config) ->
     ?assertMatch(ok, application:stop(gun));
 end_per_testcase(_, _Config) ->
     ok.
@@ -327,7 +333,7 @@ ws_must_return_ok_error(_Config) ->
     ),
     ?assertMatch({ok, http}, gun:await_up(Pid)),
     _ = monitor(process, Pid),
-    StreamRef = gun:ws_upgrade(Pid, "/websocket", [], #{compress => true}),
+    StreamRef = gun:ws_upgrade(Pid, "/ws", [], #{compress => true}),
     ct:pal("WS request StreamRef: ~n~p~n", [StreamRef]),
     receive
         {gun_upgrade, Pid, StreamRef, _, _} ->
@@ -337,7 +343,7 @@ ws_must_return_ok_error(_Config) ->
     end,
 
     %% Check that we receive the echoed message.
-    R3 = gun:ws_send(Pid, {text, <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\", \"data\": {\"foo\": \"bar\"}}\n">>}),
+    R3 = gun:ws_send(Pid, {text, <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\", \"data\": {\"foo\": \"bar\"}}">>}),
     R4 =  receive
               {gun_ws, Pid, StreamRef, {text, <<"{\"status\":\"ok\",\"data\":{\"foo\":\"bar\"}}">>}} ->
                   ok
@@ -346,27 +352,13 @@ ws_must_return_ok_error(_Config) ->
           end,
     ct:pal("WS request Check that we receive the echoed message (status ok): ~n Send ~p~n Receive~p~n", [R3,R4]),
 
-    R5 = gun:ws_send(Pid, {text, <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\}}\n">>}),
+    R5 = gun:ws_send(Pid, {text, <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\}}">>}),
     R6 =  receive
-              {gun_ws, Pid, StreamRef, {text, <<"{\"status\":\"ok\",\"data\":{\"foo\":\"bar\"}}">>}} ->
+              {gun_ws, Pid, StreamRef, {text, <<"{\"status\":\"error\"}">>}} ->
                   ok
-          after 500 ->
+          after 1000 ->
             exit(timeout)
           end,
     ct:pal("WS request Check that we receive the echoed message (status error): ~n Send ~p~n Receive~p~n", [R5,R6]),
     gun:ws_send(Pid, close),
     ok.
-
-
-
-
-
-
-
-    Url = "http://localhost:8080/",
-    Auth = base64:encode(<<"Nikita:open sesame">>),
-    Header = [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
-    Body = <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\", \"data\": {\"foo\": \"bar\"}}">>,
-    {ok, R} = req_api:req(post, Url, Header, Body),
-    ct:pal("Post request post_must_return_200_ok ~n~p~n", [R]),
-    ?assertMatch(200, req_api:get_resp_code(R)).
