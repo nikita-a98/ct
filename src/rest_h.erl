@@ -5,8 +5,8 @@
 %%
 %% For Post request
 %% curl -i -H "content-type: text/plain" -d echo=hihihi -u "Nikita:open sesame" http://localhost:8080
-%% curl -i -H "content-type: application/json" -d "{"v": "1", "obj": "foo", "op": "create", "data": {"foo": "bar"}}" -u "Nikita:open sesame" http://localhost:8080
-
+%% curl -i -H "content-type: application/json" -d "{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\", \"data\": {\"foo\": \"bar\"}}" -u "Nikita:open sesame" http://localhost:8080
+%% curl -i -H "content-type: application/json" -d "{\"v\": \"1\", \"obj\": \foo\"}" -u "Nikita:open sesame" http://localhost:8080
 -module(rest_h).
 -author("nikita").
 
@@ -118,23 +118,30 @@ to_json(Req, State) ->
 
 from_json(Req0, State) ->
     io:format("Req2: ~n~n~p~n~n", [Req0]),
-    {ok, Echo, Req} = cowboy_req:read_urlencoded_body(Req0),
+    {ok, [{Echo, _}], Req} = cowboy_req:read_urlencoded_body(Req0),
+    try jiffy:decode(binary_to_list(Echo), [return_maps]) of
+        Echo1 ->
+            io:format("Echo1: ~n~p~n~n", [Echo1]),
+            #{
+                <<"v">> := _V,
+                <<"obj">> := _Obj,
+                <<"op">> := _Op,
+                <<"data">> :=
+                #{
+                    <<"foo">> := _Foo
+                }
+            } = Echo1,
 
-    io:format("Echo: ~n~p~n~n", [Echo]),
-    Echo1 = jiffy:decode(Echo, [return_maps]),
-    io:format("Echo1: ~n~p~n~n", [Echo1]),
-    #{
-        <<"v">> := _V,
-        <<"obj">> := _Obj,
-        <<"op">> := _Op,
-        <<"data">> :=
-        #{
-            <<"foo">> := _Foo
-        }
-    } = Echo1,
+            Resp = cowboy_req:set_resp_body([<<"5">>], Req),
+            io:format("Resp1: ~n~p~n~n", [Resp]),
+            {true, Resp, State}
+    catch
+        _ ->
+            Resp = cowboy_req:set_resp_body([], Req),
+            io:format("Resp2: ~n~p~n~n", [Resp]),
+            {false, Resp, State}
+    end.
 
-    Resp = cowboy_req:set_resp_body([], Req),
-    {true, Resp, State}.
 
 %%
 %%echo_from_json(<<"GET">>, Req, State) ->

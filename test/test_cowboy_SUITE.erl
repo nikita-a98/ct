@@ -91,7 +91,15 @@ end_per_suite(_) ->
 %%% Description: Returns a list of test case group definitions.
 %%%-------------------------------------------------------------------
 groups() ->
-    [{_GroupName = req, _Opt = [parallel], _TestCases = [echo_get, echo_post, echo_ws]}].
+    [{_GroupName = req, _Opt = [parallel], _TestCases = [
+        echo_get,
+        echo_post,
+        echo_ws,
+        is_avail_resource_must_return_200_ok,
+        is_avail_resource_must_return_404_error,
+        post_must_return_200_ok,
+        post_must_return_400_error
+    ]}].
 
 %%%-------------------------------------------------------------------
 %%% Function: init_per_group(GroupName, Config0) ->
@@ -151,9 +159,7 @@ end_per_group(_GroupName = req, Config) ->
 init_per_testcase(echo_ws, Config) ->
     ?assertMatch({ok, _}, application:ensure_all_started(gun)),
     Config;
-init_per_testcase(echo_post, Config) ->
-    Config;
-init_per_testcase(echo_get, Config) ->
+init_per_testcase(_, Config) ->
     Config.
 
 %%%--------------------------------------------------------------------
@@ -171,10 +177,9 @@ init_per_testcase(echo_get, Config) ->
 %%%--------------------------------------------------------------------
 end_per_testcase(echo_ws, _Config) ->
     ?assertMatch(ok, application:stop(gun));
-end_per_testcase(echo_post, _Config) ->
-    ok;
-end_per_testcase(echo_get, _Config) ->
+end_per_testcase(_, _Config) ->
     ok.
+
 
 %%% ==================================================================
 %%% Test cases
@@ -263,8 +268,51 @@ echo_ws(_Config) ->
     gun:ws_send(Pid, close),
     ok.
 
+%%%-------------------------------------------------------------------
+%%% Test is_avail_resource_must_return_200_ok
+%%%-------------------------------------------------------------------
+is_avail_resource_must_return_200_ok(_Config) ->
+    Url = "http://localhost:8080/",
+    Auth = base64:encode(<<"Nikita:open sesame">>),
+    Header = [
+        {<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])},
+        {<<"accept">>, <<"application/json">>}],
+    {ok, R} = req_api:req(get, Url, Header),
+    ct:pal("GET request is_avail_resource_must_return_200_ok ~n~p~n", [R]),
+    ?assertMatch(200, req_api:get_resp_code(R)).
 
+%%%-------------------------------------------------------------------
+%%% Test is_avail_resource_must_return_404_error
+%%%-------------------------------------------------------------------
+is_avail_resource_must_return_404_error(_Config) ->
+    Url = "http://localhost:8080/foo",
+    Auth = base64:encode(<<"Nikita:open sesame">>),
+    Header = [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
+    {ok, R} = req_api:req(get, Url, Header),
+    ct:pal("GET request is_avail_resource_must_return_404_error ~n~p~n", [R]),
+    ?assertMatch(404, req_api:get_resp_code(R)).
 
+%%%-------------------------------------------------------------------
+%%% Test post_must_return_200_ok
+%%%-------------------------------------------------------------------
+post_must_return_200_ok(_Config) ->
+    Url = "http://localhost:8080/",
+    Auth = base64:encode(<<"Nikita:open sesame">>),
+    Header = [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
+    Body = <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\", \"data\": {\"foo\": \"bar\"}}">>,
+    {ok, R} = req_api:req(post, Url, Header, Body),
+    ct:pal("Post request post_must_return_200_ok ~n~p~n", [R]),
+    ?assertMatch(200, req_api:get_resp_code(R)).
 
-
+%%%-------------------------------------------------------------------
+%%% Test post_must_return_400_error
+%%%-------------------------------------------------------------------
+post_must_return_400_error(_Config) ->
+    Url = "http://localhost:8080/",
+    Auth = base64:encode(<<"Nikita:open sesame">>),
+    Header = [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
+    Body = <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \create\"}">>,
+    {ok, R} = req_api:req(post, Url, Header, Body),
+    ct:pal("Post request post_must_return_400_error ~n~p~n", [R]),
+    ?assertMatch(400, req_api:get_resp_code(R)).
 
