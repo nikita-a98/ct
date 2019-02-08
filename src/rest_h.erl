@@ -132,9 +132,8 @@ from_json(Req0, State) ->
                 }
             } = Echo1,
 
-            Resp = cowboy_req:set_resp_body([<<"5">>], Req),
-            io:format("Resp1: ~n~p~n~n", [Resp]),
-            {true, Resp, State}
+            Resp = cowboy_req:reply(200, Req),
+            {stop, Resp, State}
     catch
         _ ->
             Resp = cowboy_req:set_resp_body([], Req),
