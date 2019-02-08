@@ -20,7 +20,8 @@ start(_Type, _Args) ->
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/", rest_h, []},
-            {"/websocket", ws_h, []}
+            {"/websocket", ws_h, []},
+            {"/ws", ws_h1, []}
         ]}
     ]),
     {ok, _} = cowboy:start_clear(

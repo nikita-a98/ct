@@ -316,3 +316,57 @@ post_must_return_400_error(_Config) ->
     ct:pal("Post request post_must_return_400_error ~n~p~n", [R]),
     ?assertMatch(400, req_api:get_resp_code(R)).
 
+%%%-------------------------------------------------------------------
+%%% Test ws_must_return_200_ok
+%%%-------------------------------------------------------------------
+ws_must_return_ok_error(_Config) ->
+    {ok, Pid} = gun:open(
+        "127.0.0.1",
+        8080,
+        #{protocols =>[http], retry => 0}
+    ),
+    ?assertMatch({ok, http}, gun:await_up(Pid)),
+    _ = monitor(process, Pid),
+    StreamRef = gun:ws_upgrade(Pid, "/websocket", [], #{compress => true}),
+    ct:pal("WS request StreamRef: ~n~p~n", [StreamRef]),
+    receive
+        {gun_upgrade, Pid, StreamRef, _, _} ->
+            ok;
+        Msg1 ->
+            exit({connection_failed, Msg1})
+    end,
+
+    %% Check that we receive the echoed message.
+    R3 = gun:ws_send(Pid, {text, <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\", \"data\": {\"foo\": \"bar\"}}\n">>}),
+    R4 =  receive
+              {gun_ws, Pid, StreamRef, {text, <<"{\"status\":\"ok\",\"data\":{\"foo\":\"bar\"}}">>}} ->
+                  ok
+          after 500 ->
+            exit(timeout)
+          end,
+    ct:pal("WS request Check that we receive the echoed message (status ok): ~n Send ~p~n Receive~p~n", [R3,R4]),
+
+    R5 = gun:ws_send(Pid, {text, <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\}}\n">>}),
+    R6 =  receive
+              {gun_ws, Pid, StreamRef, {text, <<"{\"status\":\"ok\",\"data\":{\"foo\":\"bar\"}}">>}} ->
+                  ok
+          after 500 ->
+            exit(timeout)
+          end,
+    ct:pal("WS request Check that we receive the echoed message (status error): ~n Send ~p~n Receive~p~n", [R5,R6]),
+    gun:ws_send(Pid, close),
+    ok.
+
+
+
+
+
+
+
+    Url = "http://localhost:8080/",
+    Auth = base64:encode(<<"Nikita:open sesame">>),
+    Header = [{<<"authorization">>, iolist_to_binary([<<"Basic ">>, Auth])}],
+    Body = <<"{\"v\": \"1\", \"obj\": \"foo\", \"op\": \"create\", \"data\": {\"foo\": \"bar\"}}">>,
+    {ok, R} = req_api:req(post, Url, Header, Body),
+    ct:pal("Post request post_must_return_200_ok ~n~p~n", [R]),
+    ?assertMatch(200, req_api:get_resp_code(R)).
